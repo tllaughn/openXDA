@@ -1023,6 +1023,8 @@
     <Content Include="wwwroot\Scripts\StepChangeWebReport.js.map" />
     <Content Include="wwwroot\Scripts\TrendingDataDisplay.js.map" />
     <Content Include="wwwroot\Layout.cshtml" />
+    <Content Include="wwwroot\OpenSEEComtradeDownload.ashx" />
+    <Content Include="wwwroot\OpenSEECSVDownload.ashx" />
     <None Include="wwwroot\Scripts\TSX\DistributionPlot.tsx" />
     <None Include="wwwroot\Scripts\TSX\Legend.tsx" />
     <None Include="wwwroot\Scripts\TSX\LineChart.tsx" />
