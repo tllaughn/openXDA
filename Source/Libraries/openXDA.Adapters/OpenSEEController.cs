@@ -20,22 +20,21 @@
 //       Generated original version of source code.
 //
 //******************************************************************************************************
+
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.SqlClient;
+using System.Globalization;
+using System.Linq;
+using System.Runtime.Caching;
+using System.Web.Http;
 using FaultData.DataAnalysis;
 using GSF;
 using GSF.Data;
 using GSF.Web;
 using GSF.Web.Model;
 using openXDA.Model;
-using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Data.SqlClient;
-using System.Linq;
-using System.Runtime.Caching;
-using System.Web;
-using System.Web.Http;
-using System.Globalization;
-
 
 namespace openXDA.Adapters
 {
@@ -47,6 +46,46 @@ namespace openXDA.Adapters
         private DateTime m_epoch = new DateTime(1970, 1, 1);
         private readonly DataContext m_dataContext;
         private bool m_disposed;
+
+        // Constants
+        public const string TimeCorrelatedSagsSQL =
+            "SELECT " +
+            "    Event.ID AS EventID, " +
+            "    EventType.Name AS EventType, " +
+            "    FORMAT(Sag.PerUnitMagnitude * 100.0, '0.#') AS SagMagnitudePercent, " +
+            "    FORMAT(Sag.DurationSeconds * 1000.0, '0') AS SagDurationMilliseconds, " +
+            "    FORMAT(Sag.DurationCycles, '0.##') AS SagDurationCycles, " +
+            "    Event.StartTime, " +
+            "    Meter.Name AS MeterName, " +
+            "    MeterLine.LineName " +
+            "FROM " +
+            "    Event JOIN " +
+            "    EventType ON Event.EventTypeID = EventType.ID JOIN " +
+            "    Meter ON Event.MeterID = Meter.ID JOIN " +
+            "    MeterLine ON " +
+            "        Event.MeterID = MeterLine.MeterID AND " +
+            "        Event.LineID = MeterLine.LineID CROSS APPLY " +
+            "    ( " +
+            "        SELECT TOP 1 " +
+            "            Disturbance.PerUnitMagnitude, " +
+            "            Disturbance.DurationSeconds, " +
+            "            Disturbance.DurationCycles " +
+            "        FROM " +
+            "            Disturbance JOIN " +
+            "            EventType DisturbanceType ON Disturbance.EventTypeID = DisturbanceType.ID JOIN " +
+            "            Phase ON " +
+            "                Disturbance.PhaseID = Phase.ID AND " +
+            "                Phase.Name = 'Worst' " +
+            "        WHERE " +
+            "            Disturbance.EventID = Event.ID AND " +
+            "            DisturbanceType.Name = 'Sag' AND " +
+            "            Disturbance.StartTime <= {1} AND " +
+            "            Disturbance.EndTime >= {0} " +
+            "        ORDER BY PerUnitMagnitude DESC " +
+            "    ) Sag " +
+            "ORDER BY " +
+            "    Sag.PerUnitMagnitude, " +
+            "    Event.StartTime";
 
         #endregion
 
@@ -61,15 +100,6 @@ namespace openXDA.Adapters
             m_dataContext = new DataContext("systemSettings");
         }
 
-        #endregion
-
-        #region [ Static ]
-        private static MemoryCache s_memoryCache;
-
-        static OpenSEEController()
-        {
-            s_memoryCache = new MemoryCache("openSEE");
-        }
         #endregion
 
         #region [ Methods ]
@@ -275,10 +305,10 @@ namespace openXDA.Adapters
 
             Dictionary<string, Tuple<EventView, EventView>> nextBackLookup = new Dictionary<string, Tuple<EventView, EventView>>()
             {
-            { NextBackForSystem, Tuple.Create((EventView)null, (EventView)null) },
-            { NextBackForStation, Tuple.Create((EventView)null, (EventView)null) },
-            { NextBackForMeter, Tuple.Create((EventView)null, (EventView)null) },
-            { NextBackForLine, Tuple.Create((EventView)null, (EventView)null) }
+                { NextBackForSystem, Tuple.Create((EventView)null, (EventView)null) },
+                { NextBackForStation, Tuple.Create((EventView)null, (EventView)null) },
+                { NextBackForMeter, Tuple.Create((EventView)null, (EventView)null) },
+                { NextBackForLine, Tuple.Create((EventView)null, (EventView)null) }
             };
 
             Dictionary<string, dynamic> returnDict = new Dictionary<string, dynamic>();
@@ -339,7 +369,26 @@ namespace openXDA.Adapters
 
             if (new List<string>() { "Fault", "RecloseIntoFault" }.Contains(returnDict["postedEventName"]))
             {
+                const string SagVoltageMagnitudeQuery =
+                    "SELECT TOP 1 " +
+                    "    PerUnitMagnitude * 100 " +
+                    "FROM " +
+                    "    FaultSummary JOIN " +
+                    "    Disturbance ON " +
+                    "         Disturbance.EventID = FaultSummary.EventID AND " +
+                    "         Disturbance.StartTime <= dbo.AdjustDateTime2(FaultSummary.Inception, FaultSummary.DurationSeconds) AND " +
+                    "         Disturbance.EndTime >= FaultSummary.Inception JOIN " +
+                    "    EventType ON " +
+                    "        Disturbance.EventTypeID = EventType.ID AND " +
+                    "        EventType.Name = 'Sag' JOIN " +
+                    "    Phase ON " +
+                    "        Disturbance.PhaseID = Phase.ID AND " +
+                    "        Phase.Name = 'Worst' " +
+                    "WHERE FaultSummary.ID = {0} " +
+                    "ORDER BY PerUnitMagnitude";
+
                 FaultSummary thesummary = m_dataContext.Table<FaultSummary>().QueryRecordsWhere("EventID = {0} AND IsSelectedAlgorithm = 1", theEvent.ID).OrderBy(row => row.IsSuppressed).ThenBy(row => row.Inception).FirstOrDefault();
+                double sagVoltageMagnitude = m_dataContext.Connection.ExecuteScalar<double>(SagVoltageMagnitudeQuery, thesummary.ID);
 
                 if ((object)thesummary != null)
                 {
@@ -347,6 +396,7 @@ namespace openXDA.Adapters
                     returnDict.Add("postedPhase", thesummary.FaultType);
                     returnDict.Add("postedDurationPeriod", thesummary.DurationCycles.ToString("##.##", CultureInfo.InvariantCulture) + " cycles");
                     returnDict.Add("postedMagnitude", thesummary.CurrentMagnitude.ToString("####.#", CultureInfo.InvariantCulture) + " Amps (RMS)");
+                    returnDict.Add("postedSagVoltageMagnitude", sagVoltageMagnitude.ToString("####.#", CultureInfo.InvariantCulture) + "%");
                     returnDict.Add("postedCalculationCycle", thesummary.CalculationCycle.ToString());
                 }
             }
@@ -431,6 +481,77 @@ namespace openXDA.Adapters
             }
         }
 
+        public DataTable GetTimeCorrelatedSags()
+        {
+            Dictionary<string, string> query = Request.QueryParameters();
+            int eventID = int.Parse(query["eventId"]);
+
+            using (AdoDataConnection connection = new AdoDataConnection("systemSettings"))
+            {
+                double timeTolerance = connection.ExecuteScalar<double>("SELECT Value FROM Setting WHERE Name = 'TimeTolerance'");
+                DateTime startTime = connection.ExecuteScalar<DateTime>("SELECT StartTime FROM Event WHERE ID = {0}", eventID);
+                DateTime endTime = connection.ExecuteScalar<DateTime>("SELECT EndTime FROM Event WHERE ID = {0}", eventID);
+                DateTime adjustedStartTime = startTime.AddSeconds(-timeTolerance);
+                DateTime adjustedEndTime = endTime.AddSeconds(timeTolerance);
+                DataTable dataTable = connection.RetrieveData(TimeCorrelatedSagsSQL, adjustedStartTime, adjustedEndTime);
+                return dataTable;
+            }
+        }
+
+        public object GetLightningParameters()
+        {
+            Dictionary<string, string> query = Request.QueryParameters();
+            int eventID = int.Parse(query["eventId"]);
+
+            using (AdoDataConnection connection = new AdoDataConnection("systemSettings"))
+            {
+                const string Query =
+                    "SELECT " +
+                    "    Line.AssetKey AS LineKey, " +
+                    "    DATEADD(SECOND, -2, Fault.Inception) AS StartTime, " +
+                    "    DATEADD(SECOND, 2, Fault.Inception) AS EndTime " +
+                    "FROM " +
+                    "    Event JOIN " +
+                    "    Line ON Event.LineID = Line.ID CROSS APPLY " +
+                    "    ( " +
+                    "        SELECT " +
+                    "            DATEADD " +
+                    "            ( " +
+                    "                MINUTE, " +
+                    "                -Event.TimeZoneOffset, " +
+                    "                DATEADD " +
+                    "                ( " +
+                    "                    NANOSECOND, " +
+                    "                    -DATEPART(NANOSECOND, FaultSummary.Inception), " +
+                    "                    FaultSummary.Inception " +
+                    "                ) " +
+                    "            ) AS Inception " +
+                    "        FROM FaultSummary " +
+                    "        WHERE " +
+                    "            FaultSummary.EventID = Event.ID AND " +
+                    "            FaultSummary.FaultNumber = 1 AND " +
+                    "            FaultSummary.IsSelectedAlgorithm <> 0 " +
+                    "    ) Fault " +
+                    "WHERE Event.ID = {0}";
+
+                DataRow row = connection.RetrieveRow(Query, eventID);
+                string LineKey = row.ConvertField<string>("LineKey");
+                DateTime StartTime = row.ConvertField<DateTime>("StartTime");
+                DateTime EndTime = row.ConvertField<DateTime>("EndTime");
+                return new { LineKey, StartTime, EndTime };
+            }
+        }
+
+        #endregion
+
+        #region [ Static ]
+
+        private static MemoryCache s_memoryCache;
+
+        static OpenSEEController()
+        {
+            s_memoryCache = new MemoryCache("openSEE");
+        }
 
         #endregion
 
@@ -705,6 +826,5 @@ namespace openXDA.Adapters
             }
         }
         #endregion
-
     }
 }

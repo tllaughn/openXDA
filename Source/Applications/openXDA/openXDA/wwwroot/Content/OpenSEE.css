@@ -31,6 +31,7 @@ body {
     -moz-user-select: -moz-none;
     -ms-user-select: none;
     user-select: none;
+    font-family: Lucida Grande,Lucida Sans,Arial,sans-serif;
 }
 
 .selectable {
@@ -55,6 +56,28 @@ body {
 
 td {
     padding: 0px;
+}
+
+.ui-draggable {
+    left: 200px;
+}
+
+#menu {
+    width: 200px;
+}
+
+#menu .ui-accordion-header {
+    font-size: 10px;
+}
+
+#menu .ui-accordion-content {
+    font-size: 10px;
+    z-index: 999;
+}
+
+#menu .ui-accordion-content input {
+    margin: 2px;
+    width: 130px;
 }
 
 .DockWaveformHeader {
@@ -86,9 +109,9 @@ td {
 }
 
 .dot {
-    width: 5px !important;
-    height: 5px !important;
-    border-radius: 50% !important;
+	width: 5px !important;
+	height: 5px !important;
+	border-radius: 50% !important;
 }
 
 .phasertooltip {
@@ -112,8 +135,8 @@ td {
 }
 
 #unifiedtooltiphandle {
-    width: 100%;
-    height: 20px;
+    width: 100%; 
+    height:20px; 
     background-color: #808080;
     cursor: move;
     padding: 0em;
@@ -133,8 +156,8 @@ td {
 }
 
 #phasorhandle {
-    width: 100%;
-    height: 20px;
+    width: 100%; 
+    height:20px; 
     background-color: #808080;
     cursor: move;
     padding: 0em;
@@ -154,6 +177,27 @@ td {
 }
 
 #statshandle {
+    width: 100%;
+    height: 20px;
+    background-color: #808080;
+    cursor: move;
+    padding: 0em;
+}
+
+#correlatedsags {
+    font-size: 12px;
+    margin-left: auto;
+    margin-right: auto;
+    overflow-y: auto;
+    position: absolute;
+    padding: 0em;
+    z-index: 1000;
+    border: black;
+    box-shadow: 4px 4px 2px #888888;
+    border: 2px solid;
+}
+
+#correlatedsagshandle {
     width: 100%;
     height: 20px;
     background-color: #808080;
@@ -182,6 +226,27 @@ td {
     padding: 0em;
 }
 
+#lightningquery {
+    font-size: 12px;
+    margin-left: auto;
+    margin-right: auto;
+    overflow-y: auto;
+    position: absolute;
+    padding: 0em;
+    z-index: 1000;
+    border: black;
+    box-shadow: 4px 4px 2px #888888;
+    border: 2px solid;
+}
+
+#lightninghandle {
+    width: 100%;
+    height: 20px;
+    background-color: #808080;
+    cursor: move;
+    padding: 0em;
+}
+
 
 input[type="button"].link, input[type="button"].link:focus, input[type="button"].link:active {
     /* Remove all decorations to look like normal text */
@@ -198,11 +263,11 @@ input[type="button"].link, input[type="button"].link:focus, input[type="button"]
     cursor: pointer;
     text-decoration: underline;
 }
-    /* Remove extra space inside buttons in Firefox */
-    input[type="button"].link::-moz-focus-inner {
-        border: none;
-        padding: 0;
-    }
+/* Remove extra space inside buttons in Firefox */
+input[type="button"].link::-moz-focus-inner {
+    border: none;
+    padding: 0;
+}
 
 .smallbutton {
     background: #3498db;
@@ -226,15 +291,15 @@ input[type="button"].link, input[type="button"].link:focus, input[type="button"]
     text-decoration: none;
 }
 
-    .smallbutton:hover {
-        background: #3cb0fd;
-        background-image: -webkit-linear-gradient(top, #3cb0fd, #3498db);
-        background-image: -moz-linear-gradient(top, #3cb0fd, #3498db);
-        background-image: -ms-linear-gradient(top, #3cb0fd, #3498db);
-        background-image: -o-linear-gradient(top, #3cb0fd, #3498db);
-        background-image: linear-gradient(to bottom, #3cb0fd, #3498db);
-        text-decoration: none;
-    }
+.smallbutton:hover {
+    background: #3cb0fd;
+    background-image: -webkit-linear-gradient(top, #3cb0fd, #3498db);
+    background-image: -moz-linear-gradient(top, #3cb0fd, #3498db);
+    background-image: -ms-linear-gradient(top, #3cb0fd, #3498db);
+    background-image: -o-linear-gradient(top, #3cb0fd, #3498db);
+    background-image: linear-gradient(to bottom, #3cb0fd, #3498db);
+    text-decoration: none;
+}
 
 .smallbutton-disabled {
     background: #b0c3cf;
@@ -275,8 +340,8 @@ input[type="button"].link, input[type="button"].link:focus, input[type="button"]
 
 #accumulatedpointshandle {
     overflow: hidden;
-    width: 100%;
-    height: 20px;
+    width: 100%; 
+    height:20px; 
     background-color: #808080;
     cursor: move;
     padding: 0em;
@@ -304,9 +369,9 @@ input[type="button"].link, input[type="button"].link:focus, input[type="button"]
     border: 0;
 }
 
-    .CloseButton:hover {
-        background: orangered;
-    }
+.CloseButton:hover {
+    background: orangered;
+}
 
 table {
     background-color: transparent;
